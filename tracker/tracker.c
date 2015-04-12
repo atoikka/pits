@@ -277,8 +277,8 @@ void LoadConfigFile(struct TConfig *Config)
 		printf ("I2C SCL overridden to %d\n", Config->SCL);
 	}
 
-	Config->servo_pin = ReadInteger(fp, "servo_pin", 0);
-	Config->servo_height = ReadInteger(fp, "servo_height", 0);
+	Config->servo_pin = ReadInteger(fp, "servo_pin", 1);
+	Config->servo_height = ReadInteger(fp, "servo_height", 1);
 
 	
 	fclose(fp);
