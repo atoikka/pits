@@ -133,6 +133,7 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 
 void ReadString(FILE *fp, char *keyword, char *Result, int Length, int NeedValue)
 {
+	//printf("ReadString(..., '%s', ...)", keyword);
 	char line[100], *token, *value;
  
 	fseek(fp, 0, SEEK_SET);
@@ -205,7 +206,7 @@ void LoadConfigFile(struct TConfig *Config)
 {
 	FILE *fp;
 	int BaudRate;
-	char *filename = "/boot/pisky.txt";
+	char *filename = "/home/pi/pits/boot/stratoschem.txt";
 
 	if ((fp = fopen(filename, "r")) == NULL)
 	{
@@ -278,8 +279,9 @@ void LoadConfigFile(struct TConfig *Config)
 	}
 
 	Config->servo_pin = ReadInteger(fp, "servo_pin", 1);
+	printf("Using servo pin %d\n", Config->servo_pin);
 	Config->servo_height = ReadInteger(fp, "servo_height", 1);
-
+	printf("Powering servo after %d meters\n", Config->servo_height);
 	
 	fclose(fp);
 }
