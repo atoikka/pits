@@ -1,5 +1,5 @@
-tracker: tracker.o gps.o misc.o DS18B20.o adc.o snapper.o led.o bmp085.o
-	cc -o tracker tracker.o gps.o misc.o DS18B20.o adc.o snapper.o led.o bmp085.o -lm -lwiringPi -lwiringPiDev -l pthread
+tracker: tracker.o gps.o misc.o DS18B20.o adc.o snapper.o led.o bmp085.o stratoschem.o
+	cc -o tracker tracker.o gps.o misc.o DS18B20.o adc.o snapper.o led.o bmp085.o stratoschem.o -lm -lwiringPi -lwiringPiDev -l pthread
 
 tracker.o: tracker.c gps.h misc.h DS18B20.h adc.h bmp085.h
 	gcc -c tracker.c
@@ -24,3 +24,6 @@ misc.o: misc.c misc.h
 
 bmp085.o: bmp085.c bmp085.h
 	gcc -c bmp085.c
+
+stratoschem.o: stratoschem.c stratoschem.h
+	gcc -c stratoschem.c
