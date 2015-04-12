@@ -3,6 +3,7 @@
 #include "misc.h" // Config
 
 #include <wiringPi.h> // pinMode, digitalWrite
+#include <stdbool.h> // bool
 
 bool servo_high = false;
 
