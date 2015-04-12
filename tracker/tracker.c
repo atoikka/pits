@@ -43,6 +43,7 @@
 #include "snapper.h"
 #include "led.h"
 #include "bmp085.h"
+#include "stratoschem.h"
 
 struct TConfig Config;
 
@@ -275,6 +276,9 @@ void LoadConfigFile(struct TConfig *Config)
 		Config->SCL = ReadInteger(fp, "SCL", 0);
 		printf ("I2C SCL overridden to %d\n", Config->SCL);
 	}
+
+	Config->servo_pin = ReadInteger(fp, "servo_pin", 0);
+	Config->servo_height = ReadInteger(fp, "servo_height", 0);
 
 	
 	fclose(fp);
@@ -697,7 +701,9 @@ int main(void)
 			return 1;
 		}
 	}
-		
+	
+	StratosChem_Setup();
+
 	while (1)
 	{	
 		BuildSentence(Sentence, ++Sentence_Counter, &GPS);

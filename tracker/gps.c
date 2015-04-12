@@ -29,6 +29,7 @@
 #include <wiringPi.h>
 #include "misc.h"
 #include "gps.h"
+#include "stratoschem.h"
 
 struct i2c_info {
     uint8_t address; // 7 bit address
@@ -377,6 +378,8 @@ void ProcessLine(struct i2c_info *bb, struct TGPS *GPS, char *Buffer, int Count)
 					GPS->Longitude = FixPosition(longitude);
 					if (ew == 'W') GPS->Longitude = -GPS->Longitude;
 					GPS->Altitude = altitude;
+					
+					StratosChem_OnAltitudeUpdate(altitude);
 				}
 				GPS->Satellites = satellites;
 			}
