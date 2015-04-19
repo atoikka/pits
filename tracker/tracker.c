@@ -285,7 +285,7 @@ void LoadConfigFile(struct TConfig *Config)
 	Config->servo_test = 0;
 	Config->servo_test = ReadInteger(fp, "servo_test", 0);
 	if(Config->servo_test != 0) {
-		printf("TEST: setting pin %d HIGH in 15 seconds...", Config->servo_pin);
+		printf("TEST: setting pin %d HIGH in 15 seconds...\n", Config->servo_pin);
 	}
 
 	fclose(fp);
