@@ -22,8 +22,8 @@ image_packets=4
 
 enable_bmp085=N
 
-servo_pin=41
+servo_pin=25
 
 servo_height=30000
-
-#logging=GPS,Telemetry
+servo_test=1
+logging=GPS,Telemetry
