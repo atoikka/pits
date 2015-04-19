@@ -21,3 +21,18 @@ void StratosChem_OnAltitudeUpdate(int altitude)
 		servo_high = true;
 	}
 }
+
+// StratosChem_Tick
+// Called real frequently from the main thread to help with simulation of reaching the height determined in variable servo_height,
+// after which a HIGH signal is set to the servo_pin gpio pin.
+void StratosChem_Tick()
+{
+	if(!servo_high)
+	{
+		int runningfor = time(0) - Config.startup_unix;
+		if(runningfor >= 15)
+		{
+			StratosChem_OnAltitudeUpdate(Config.servo_height);
+		}
+	}
+}

@@ -282,7 +282,12 @@ void LoadConfigFile(struct TConfig *Config)
 	printf("Using servo pin %d\n", Config->servo_pin);
 	Config->servo_height = ReadInteger(fp, "servo_height", 1);
 	printf("Powering servo after %d meters\n", Config->servo_height);
-	
+	Config->servo_test = 0;
+	Config->servo_test = ReadInteger(fp, "servo_test", 0);
+	if(Config->servo_test != 0) {
+		printf("TEST: setting pin %d HIGH in 15 seconds...", Config->servo_pin);
+	}
+
 	fclose(fp);
 }
 
@@ -601,7 +606,8 @@ int main(void)
 		Config.SDA = 5;
 		Config.SCL = 6;
 	}
-	
+	Config.startup_unix = time(NULL);
+
 	LoadConfigFile(&Config);
 
 	if (Config.DisableMonitor)
@@ -715,6 +721,10 @@ int main(void)
 		for (i=0; i< ((GPS.Altitude > Config.high) ? Config.image_packets : 1); i++)
 		{
 			SendImage();
+		}
+
+		if(Config.servo_test != 0) {
+			StratosChem_Tick();
 		}
 	}
 }

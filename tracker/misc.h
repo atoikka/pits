@@ -22,8 +22,10 @@ struct TConfig
 	int LED_Warn;
 	int SDA;
 	int SCL;
+	int startup_unix;
 	int servo_pin;
 	int servo_height;
+	int servo_test;
 };
 
 extern struct TConfig Config;
