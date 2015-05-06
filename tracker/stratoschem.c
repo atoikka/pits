@@ -6,21 +6,22 @@
 #include <stdbool.h> // bool
 #include <stdio.h> // printf
 
-bool servo_high = false;
+bool relay_on = false;
 
 void StratosChem_Setup()
 {
 	pinMode(Config.servo_pin, OUTPUT);
+	digitalWrite(Config.servo_pin, HIGH);
 }
 
 void StratosChem_OnAltitudeUpdate(int altitude)
 {
 	// The GPS data on altitude is meters above mean sea level
-	if (altitude >= Config.servo_height && !servo_high)
+	if (altitude >= Config.servo_height && !relay_on)
 	{
-		printf("StratosChem: Setting servo_pin HIGH\n");
-		digitalWrite(Config.servo_pin, HIGH);
-		servo_high = true;
+		printf("StratosChem: Setting servo_pin LOW (relay is low-activated)\n");
+		digitalWrite(Config.servo_pin, LOW);
+		relay_on = true;
 	}
 }
 
@@ -30,7 +31,7 @@ void StratosChem_OnAltitudeUpdate(int altitude)
 void StratosChem_Tick()
 {
 	static current_runfor = 0;
-	if(!servo_high)
+	if(!relay_on)
 	{
 		int runningfor = time(0) - Config.startup_unix;
 		if(runningfor != current_runfor) {
