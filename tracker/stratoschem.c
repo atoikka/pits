@@ -5,8 +5,10 @@
 #include <wiringPi.h> // pinMode, digitalWrite
 #include <stdbool.h> // bool
 #include <stdio.h> // printf
+#include <time.h> // time
 
 bool relay_on = false;
+int relay_on_since = -1;
 
 void StratosChem_Setup()
 {
@@ -22,6 +24,7 @@ void StratosChem_OnAltitudeUpdate(int altitude)
 		printf("StratosChem: Setting servo_pin LOW (relay is low-activated)\n");
 		digitalWrite(Config.servo_pin, LOW);
 		relay_on = true;
+		relay_on_since = (int)time(0);
 	}
 }
 
@@ -41,6 +44,14 @@ void StratosChem_Tick()
 		{
 			printf("TEST: execution simulation...\n");
 			StratosChem_OnAltitudeUpdate(Config.servo_height);
+		}
+	}
+	else
+	{
+		// After 5 minutes of operation, turn off
+		int runningfor = time(0) - relay_on_since;
+		if(runningfor >= 5*60) {
+			digitalWrite(Config.servo_pin, HIGH);
 		}
 	}
 }
