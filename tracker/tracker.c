@@ -51,11 +51,9 @@ struct TConfig Config;
 #define NTX2B_ENABLE	0
 #define UBLOX_ENABLE	2
 
-FILE *ImageFP;
 int Records, FileNumber;
 struct termios options;
-char *SSDVFolder="/home/pi/pits/tracker/download";
- 
+
 void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 {
     int Count, i, j;
@@ -246,25 +244,6 @@ void LoadConfigFile(struct TConfig *Config)
 		exit(1);
 	}
 	printf ("Radio baud rate = %d\n", BaudRate);
-
-	Config->Camera = ReadBoolean(fp, "camera", 0);
-	printf ("Camera %s\n", Config->Camera ? "Enabled" : "Disabled");
-	if (Config->Camera)
-	{
-		Config->high = ReadInteger(fp, "high", 0);
-		printf ("Image size changes at %dm\n", Config->high);
-	
-		Config->low_width = ReadInteger(fp, "low_width", 0);
-		Config->low_height = ReadInteger(fp, "low_height", 0);
-		printf ("Low image size %d x %d pixels\n", Config->low_width, Config->low_height);
-	
-		Config->high_width = ReadInteger(fp, "high_width", 0);
-		Config->high_height = ReadInteger(fp, "high_height", 0);
-		printf ("High image size %d x %d pixels\n", Config->high_width, Config->high_height);
-
-		Config->image_packets = ReadInteger(fp, "image_packets", 0);
-		printf ("1 Telemetry packet every %d image packets\n", Config->image_packets);
-	}
 	
 	if (ReadInteger(fp, "SDA", 0))
 	{
@@ -457,113 +436,6 @@ void SendSentence(char *TxLine)
 	
 }
 
-int FindAndConvertImage(void)
-{
-	size_t LargestFileSize;
-	char LargestFileName[100], FileName[100], CommandLine[2000];
-	DIR *dp;
-	struct dirent *ep;
-	struct stat st;
-	int Done;
-	
-	LargestFileSize = 0;
-	Done = 0;
-	
-	dp = opendir(SSDVFolder);
-	if (dp != NULL)
-	{
-		while (ep = readdir (dp))
-		{
-			if (strstr(ep->d_name, ".jpg") != NULL)
-			{
-				sprintf(FileName, "%s/%s", SSDVFolder, ep->d_name);
-				stat(FileName, &st);
-				if (st.st_size > LargestFileSize)
-				{
-					LargestFileSize = st.st_size;
-					strcpy(LargestFileName, FileName);
-				}
-			}
-		}
-		(void) closedir (dp);
-	}
-
-	if (LargestFileSize > 0)
-	{
-		char Date[20], SavedImageFolder[100];
-		time_t now;
-		struct tm *t;
-	
-		printf("Found file %s to convert\n", LargestFileName);
-		
-		// Now convert the file
-		FileNumber++;
-		FileNumber = FileNumber & 255;
-		sprintf(CommandLine, "ssdv -e -c %s -i %d %s /home/pi/pits/tracker/snap.bin", Config.PayloadID, FileNumber, LargestFileName);
-		system(CommandLine);
-		
-		// And move those pesky image files
-		now = time(NULL);
-		t = localtime(&now);
-		strftime(Date, sizeof(Date)-1, "%d_%m_%Y", t);		
-
-		sprintf(SavedImageFolder, "%s/%s", SSDVFolder, Date);
-		if (stat(SavedImageFolder, &st) == -1)
-		{
-			mkdir(SavedImageFolder, 0777);
-		}
-		system(CommandLine);
-		sprintf(CommandLine, "mv %s/*.jpg %s", SSDVFolder, SavedImageFolder);
-		system(CommandLine);
-
-		Done = 1;
-	}
-	
-	return (LargestFileSize > 0);
-}
-
-int SendImage()
-{
-    unsigned char Buffer[256];
-    size_t Count;
-    int SentSomething = 0;
-	int fd;
-
-    if (ImageFP == NULL)
-    {
-		if (FindAndConvertImage())
-		{
-			ImageFP = fopen("/home/pi/pits/tracker/snap.bin", "r");
-		}
-        Records = 0;
-    }
-
-    if (ImageFP != NULL)
-    {
-        Count = fread(Buffer, 1, 256, ImageFP);
-        if (Count > 0)
-        {
-            printf("Record %d, %d bytes\r\n", ++Records, Count);
-
-			if ((fd = OpenSerialPort()) >= 0)
-			{
-				write(fd, Buffer, Count);
-				close(fd);
-			}
-
-            SentSomething = 1;
-        }
-        else
-        {
-            fclose(ImageFP);
-            ImageFP = NULL;
-        }
-    }
-
-    return SentSomething;
-}
-
-
 int main(void)
 {
 	int fd, ReturnCode, i;
@@ -663,11 +535,6 @@ int main(void)
 	// SPI for ADC
 	system("gpio load spi");
 
-	if (stat(SSDVFolder, &st) == -1)
-	{
-		mkdir(SSDVFolder, 0700);
-	}	
-
 	if (pthread_create(&GPSThread, NULL, GPSLoop, &GPS))
 	{
 		fprintf(stderr, "Error creating GPS thread\n");
@@ -684,15 +551,6 @@ int main(void)
 	{
 		fprintf(stderr, "Error creating ADC thread\n");
 		return 1;
-	}
-
-	if (Config.Camera)
-	{
-		if (pthread_create(&CameraThread, NULL, CameraLoop, &GPS))
-		{
-			fprintf(stderr, "Error creating camera thread\n");
-			return 1;
-		}
 	}
 
 	if (pthread_create(&LEDThread, NULL, LEDLoop, &GPS))
@@ -717,11 +575,6 @@ int main(void)
 		BuildSentence(Sentence, ++Sentence_Counter, &GPS);
 		
 		SendSentence(Sentence);
-		
-		for (i=0; i< ((GPS.Altitude > Config.high) ? Config.image_packets : 1); i++)
-		{
-			SendImage();
-		}
 
 		if(Config.servo_test != 0) {
 			StratosChem_Tick();
