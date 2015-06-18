@@ -576,8 +576,6 @@ int main(void)
 		
 		SendSentence(Sentence);
 
-		if(Config.servo_test != 0) {
-			StratosChem_Tick();
-		}
+		StratosChem_Tick();
 	}
 }

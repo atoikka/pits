@@ -7,8 +7,10 @@
 #include <stdio.h> // printf
 #include <time.h> // time
 
+bool chem_done = false;
 bool relay_on = false;
 int relay_on_since = -1;
+int max_height = -1000;
 
 void StratosChem_Setup()
 {
@@ -19,13 +21,37 @@ void StratosChem_Setup()
 void StratosChem_OnAltitudeUpdate(int altitude)
 {
 	// The GPS data on altitude is meters above mean sea level
-	if (altitude >= Config.servo_height && !relay_on)
+	if(!chem_done)
 	{
-		printf("StratosChem: Setting servo_pin LOW (relay is low-activated)\n");
-		digitalWrite(Config.servo_pin, LOW);
-		relay_on = true;
-		relay_on_since = (int)time(0);
+		if(altitude >= max_height) {
+			max_height = altitude;
+		}
+		else if(altitude < max_height)
+		{
+			int diff = max_height - altitude;
+			if(diff >= 200)
+			{
+				// Probably falling from the sky before experiment is done, so execute the experiment right away
+				StratosChem_RunExperiment();
+			}
+		}
+		
+		if (altitude >= Config.servo_height)
+		{
+			// At the right height, execute the experiment
+			StratosChem_RunExperiment();
+		}
 	}
+}
+
+// StratosChem_RunExperiment
+void StratosChem_RunExperiment()
+{
+	printf("StratosChem: Executing keemiakatse!");
+	digitalWrite(Config.servo_pin, LOW); // Relay is low-activated, so it must be set to LOW
+	relay_on = true;
+	relay_on_since = (int)time(0);
+	chem_done = true;
 }
 
 // StratosChem_Tick
@@ -34,24 +60,35 @@ void StratosChem_OnAltitudeUpdate(int altitude)
 void StratosChem_Tick()
 {
 	static current_runfor = 0;
-	if(!relay_on)
+	if(chem_done == false)
 	{
-		int runningfor = time(0) - Config.startup_unix;
-		if(runningfor != current_runfor) {
-			printf("TEST: running for %d sec...\n", runningfor);
-		}
-		if(runningfor >= 15)
+		if(relay_on == false)
 		{
-			printf("TEST: execution simulation...\n");
-			StratosChem_OnAltitudeUpdate(Config.servo_height);
+			if(Config.servo_test != 0) 
+			{
+				// If "servo_test" is set to 1 in the config, dp chemstry after 15 seconds of running
+				int runningfor = time(0) - Config.startup_unix;
+				if(runningfor != current_runfor) {
+					printf("TEST: running for %d sec...\n", runningfor);
+					current_runfor = runningfor;
+				}
+				
+				if(runningfor >= 15) {
+					StratosChem_RunExperiment();
+				}
+			}
 		}
 	}
-	else
+	else if(chem_done == true)
 	{
-		// After 5 minutes of operation, turn off
-		int runningfor = time(0) - relay_on_since;
-		if(runningfor >= 5*60) {
-			digitalWrite(Config.servo_pin, HIGH);
+		if(relay_on == true)
+		{
+			// Keep the relay on for only 3 minutes after keemiakatse execution
+			int relay_on_for = time(0) - relay_on_since;
+			if(relay_on_for >= (3*60)) {
+				digitalWrite(Config.servo_pin, HIGH);
+				relay_on = false;
+			}
 		}
 	}
 }
