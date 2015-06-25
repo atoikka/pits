@@ -36,6 +36,10 @@
 #include <math.h>
 #include <pthread.h>
 #include <wiringPi.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <ifaddrs.h>
+#include <sys/statvfs.h>
 #include "gps.h"
 #include "DS18B20.h"
 #include "adc.h"
@@ -420,35 +424,62 @@ int OpenSerialPort(void)
 	return fd;
 }
 
-void SendSentence(char *TxLine)
+void SendSentence(int fd, char *TxLine)
 {
-	int fd;
+	write(fd, TxLine, strlen(TxLine));
 
-	
-	if ((fd = OpenSerialPort()) >= 0)
+	// Log now while we're waiting for the serial port, to eliminate or at least reduce downtime whilst logging
+	if (Config.EnableTelemetryLogging)
 	{
-		write(fd, TxLine, strlen(TxLine));
-		
-		if (close(fd) < 0)
-		{
-			printf("NOT Sent - error %d\n", errno);
-		}
-		
-		if (Config.EnableTelemetryLogging)
-		{
-			WriteLog("telemetry.txt", TxLine);
-		}
+		WriteLog("telemetry.txt", TxLine);
 	}
-	else
+		
+	// Wait till those characters get sent
+	tcsetattr(fd, TCSAFLUSH, &options);
+}
+
+void SendIPAddress(int fd)
+{
+    struct ifaddrs *ifap, *ifa;
+    struct sockaddr_in *sa;
+    char *addr;
+
+    getifaddrs (&ifap);
+    for (ifa = ifap; ifa; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr->sa_family==AF_INET) {
+            sa = (struct sockaddr_in *) ifa->ifa_addr;
+            addr = inet_ntoa(sa->sin_addr);
+			if (strcmp(addr, "127.0.0.1") != 0)
+			{
+				char Sentence[128];
+				
+				sprintf(Sentence, "Interface %s has IP Address: %s\n", ifa->ifa_name, addr);
+				printf(Sentence);
+				SendSentence(fd, Sentence);
+			}
+        }
+    }
+
+    freeifaddrs(ifap);
+}
+
+void SendFreeSpace(int fd)
+{
+	struct statvfs vfs;
+
+	if (statvfs("/home", &vfs) == 0)
 	{
-		printf("Failed to open serial port\n");
+		char Sentence[64];
+		
+		sprintf(Sentence, "Free SD space = %.1fMB\n", (float)vfs.f_bsize * (float)vfs.f_bfree / (1024 * 1024));
+		printf(Sentence);
+		SendSentence(fd, Sentence);
 	}
-	
 }
 
 int main(void)
 {
-	int fd, ReturnCode, i;
+	int fd, ReturnCode, i, StartupSentenceCount;
 	unsigned long Sentence_Counter = 0;
 	char Sentence[100], Command[100];
 	struct stat st = {0};
@@ -537,7 +568,6 @@ int main(void)
 		printf("Cannot open serial port - check documentation!\n");
 		exit(1);
 	}
-	close(fd);
 
 	// Set up DS18B20
 	system("sudo modprobe w1-gpio");
@@ -579,13 +609,20 @@ int main(void)
 		}
 	}
 	
+	StartupSentenceCount = (Config.TxSpeed < B300) ? 2 : 4;
+	for (i = 0; i < StartupSentenceCount; i++)
+	{
+		SendIPAddress(fd);
+		SendFreeSpace(fd);
+	}
+	
 	StratosChem_Setup();
 
 	while (1)
 	{	
 		BuildSentence(Sentence, ++Sentence_Counter, &GPS);
 		
-		SendSentence(Sentence);
+		SendSentence(fd, Sentence);
 
 		StratosChem_Tick();
 	}

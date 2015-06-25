@@ -54,7 +54,7 @@ void *DS18B20Loop(void *some_void_ptr)
 										token = strtok(line, "=");
 										value = strtok(NULL, "\n");
 										Temperature = atof(value) / 1000;
-										printf("DS18B20 sensor %d: %5.3fC\n", SensorCount, Temperature);
+										//printf("DS18B20 sensor %d: %5.3fC\n", SensorCount, Temperature);
 										GPS->DS18B20Temperature[SensorCount++] = Temperature;
 									}
 								}
