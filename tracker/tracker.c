@@ -59,7 +59,7 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
     int Count, i, j;
     unsigned char c;
     unsigned int CRC, xPolynomial;
-	char TimeBuffer1[12], TimeBuffer2[10], ExtraFields1[20], ExtraFields2[20];
+	char TimeBuffer1[12], TimeBuffer2[10], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20];
 	
 	sprintf(TimeBuffer1, "%06.0f", GPS->Time);
 	TimeBuffer2[0] = TimeBuffer1[0];
@@ -82,10 +82,14 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 	
 	if (Config.EnableBMP085)
 	{
-		sprintf(ExtraFields2, ",%.1f,%.0f", GPS->ExternalTemperature, GPS->Pressure);
+		sprintf(ExtraFields2, ",%.1f,%.0f", GPS->BMP180Temperature, GPS->Pressure);
 	}
-	
-    sprintf(TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%05.5u,%d,%d,%d,%3.1f,%3.1f%s%s",
+	if (GPS->DS18B20Count > 1)
+	{
+		sprintf(ExtraFields3, ",%3.1f", GPS->DS18B20Temperature[Config.ExternalDS18B20]);
+	}
+
+    sprintf(TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%05.5u,%d,%d,%d,%3.1f,%3.1f%s%s%s",
             Config.PayloadID,
             SentenceCounter,
 			TimeBuffer2,
@@ -95,10 +99,11 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 			(GPS->Speed * 13) / 7,
 			GPS->Direction,
 			GPS->Satellites,            
-            GPS->InternalTemperature,
+            GPS->DS18B20Temperature[1-Config.ExternalDS18B20],
             GPS->BatteryVoltage,
 			ExtraFields1,
-			ExtraFields2);
+			ExtraFields2,
+			ExtraFields3);
 
     Count = strlen(TxLine);
 
@@ -265,6 +270,11 @@ void LoadConfigFile(struct TConfig *Config)
 	Config->servo_test = ReadInteger(fp, "servo_test", 0);
 	if(Config->servo_test != 0) {
 		printf("TEST: setting pin %d HIGH in 15 seconds...\n", Config->servo_pin);
+	}
+	
+	Config->ExternalDS18B20 = ReadInteger(fp, "external_ds18b20", 0);
+	if(Config->ExternalDS18B20) {
+		printf("Support for second DS18B20 sensor\n");
 	}
 
 	fclose(fp);
@@ -494,9 +504,10 @@ int main(void)
 	GPS.Satellites = 0;
 	GPS.Speed = 0.0;
 	GPS.Direction = 0.0;
-	GPS.InternalTemperature = 0.0;
+	GPS.DS18B20Temperature[0] = 0.0;
+	GPS.DS18B20Temperature[1] = 0.0;
 	GPS.BatteryVoltage = 0.0;
-	GPS.ExternalTemperature = 0.0;
+	GPS.BMP180Temperature = 0.0;
 	GPS.Pressure = 0.0;
 	
 	// Set up I/O

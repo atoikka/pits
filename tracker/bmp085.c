@@ -93,11 +93,8 @@ void *BMP085Loop(void *some_void_ptr)
 	{
 		if (bmp.fd = open_i2c(BMP085_ADDRESS))
 		{
-			GPS->ExternalTemperature = bmp085GetTemperature(&bmp);
-			GPS->Pressure = bmp085GetPressure(&bmp, GPS->ExternalTemperature);
-
-			// printf("Temperature is %5.2lf\n", GPS->ExternalTemperature);
-			// printf("Pressure is %5.2lf\n", GPS->Pressure);
+			GPS->BMP180Temperature = bmp085GetTemperature(&bmp);
+			GPS->Pressure = bmp085GetPressure(&bmp, GPS->BMP180Temperature);
 
 			close(bmp.fd);
 		}
